@@ -12,15 +12,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,44 +30,74 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.collectAsState
+import com.wzzhuz.dayscounter.data.EventRepository
 import com.wzzhuz.dayscounter.data.EventRow
 import com.wzzhuz.dayscounter.domain.DayCountResult
 
+/**
+ * 事件列表页。
+ *
+ * 数据来自 Room 的 Flow，变更自动刷新。
+ * **排序由 Repository 完成**，此处只做渲染 ——
+ * items{} 内禁止出现 indexOfFirst / find / sortedBy（O(n²) 陷阱）。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EventListScreen() {
-    var query by remember { mutableStateOf("") }
+fun EventListScreen(
+    repository: EventRepository,
+    onAddClick: () -> Unit,
+    onEventClick: (EventRow) -> Unit,
+    onSearchClick: () -> Unit = {},
+) {
+    val rows by repository.observeRows().collectAsState(initial = emptyList())
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("倒数日") },
                 actions = {
-                    IconButton(onClick = { /* TODO: 搜索入口，change 内实现 */ }) {
-                        Icon(Icons.Default.Search, contentDescription = "搜索")
-                    }
+                    TextButton(onClick = onSearchClick) { Text("搜索") }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: 新增事件 */ }) {
+            FloatingActionButton(onClick = onAddClick) {
                 Icon(Icons.Default.Add, contentDescription = "新增事件")
             }
         }
     ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            Text(
-                text = "暂无事件。点击右下角 + 添加第一个重要日子。",
-                modifier = Modifier.align(Alignment.Center).padding(32.dp),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyLarge,
-            )
+        if (rows.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                Text(
+                    text = "暂无事件。点击右下角 + 添加第一个重要日子。",
+                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(rows, key = { it.event.id }) { row ->
+                    EventRowCard(
+                        row = row,
+                        onClick = { onEventClick(row) },
+                    )
+                }
+            }
         }
     }
+
 }
 
 /**
@@ -79,8 +108,15 @@ fun EventListScreen() {
  * 5000 条时是 2500 万次比较，直接卡死 UI（lifelog 真实踩过）。
  */
 @Composable
-fun EventRowCard(row: EventRow, modifier: Modifier = Modifier) {
-    Card(modifier = modifier.fillMaxWidth()) {
+fun EventRowCard(
+    row: EventRow,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        onClick = onClick,
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -89,12 +125,21 @@ fun EventRowCard(row: EventRow, modifier: Modifier = Modifier) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (row.event.pinned) {
+                        Text(
+                            "置顶 · ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Text(
+                        text = row.event.title,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
                 Text(
-                    text = row.event.title,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = row.nextOccurrence.toString(),
+                    text = buildSubtitle(row),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -108,23 +153,17 @@ fun EventRowCard(row: EventRow, modifier: Modifier = Modifier) {
     }
 }
 
-/** 天数的显示文案。 sealed class 保证 UI 不会漏处理某种情况 */
-private fun DayCountResult.displayText(): String = when (this) {
-    is DayCountResult.Future -> "还剩 ${days}天"
-    DayCountResult.Today -> "就是今天"
-    is DayCountResult.Past -> "已过 ${days}天"
-    is DayCountResult.CountUp -> "第 ${days}天"
+private fun buildSubtitle(row: EventRow): String {
+    val datePart = row.nextOccurrence.toString()
+    val lunar = if (row.event.calendarType == com.wzzhuz.dayscounter.domain.CalendarType.LUNAR) " · 农历" else ""
+    val repeat = if (row.event.repeatType == com.wzzhuz.dayscounter.domain.RepeatType.YEARLY) " · 每年" else ""
+    return datePart + lunar + repeat
 }
 
-@Composable
-fun EventList(rows: List<EventRow>, modifier: Modifier = Modifier) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(rows, key = { it.event.id }) { row ->
-            EventRowCard(row)
-        }
-    }
+/** 天数的显示文案。 sealed class 保证 UI 不会漏处理某种情况 */
+private fun DayCountResult.displayText(): String = when (this) {
+    is DayCountResult.Future -> "还剩${days}天"
+    DayCountResult.Today -> "就是今天"
+    is DayCountResult.Past -> "已过${days}天"
+    is DayCountResult.CountUp -> "第${days}天"
 }
