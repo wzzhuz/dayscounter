@@ -66,6 +66,27 @@ class EventRepository(private val dao: EventDao) {
 
     suspend fun delete(id: String) = dao.deleteEvent(id)
 
+    /**
+     * 同步删除（供 UI 层回调直接调用）。
+     * 内部切到 IO 线程执行，调用方无需自己开协程。
+     */
+    fun deleteAsync(id: String) {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            dao.deleteEvent(id)
+        }
+    }
+
+    /** 同步保存（供 UI 层回调直接调用），保存完成后通过 onDone 回调通知 */
+    fun saveAsync(
+        event: com.wzzhuz.dayscounter.domain.Event,
+        onDone: () -> Unit = {},
+    ) {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            save(event)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { onDone() }
+        }
+    }
+
     suspend fun deleteAll() = dao.deleteAllEvents()
 
     suspend fun createTag(name: String, colorArgb: Int? = null): Tag {
