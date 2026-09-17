@@ -45,8 +45,15 @@ jobs:
       - name: 列出 APK 产物
         if: success()
         run: |
-          echo "=== app/build/outputs 树 ==="
-          find app/build/outputs -type f 2>/dev/null | head -40 || echo "(无 outputs 目录)"
+          mkdir -p ci-logs
+          {
+            echo "=== app/build 下所有 apk/aab ==="
+            find app/build -name '*.apk' -o -name '*.aab' 2>/dev/null
+            echo "=== app/build/outputs 是否存在 ==="
+            ls -la app/build/outputs 2>&1 || echo "(无 outputs)"
+            echo "=== 整个 app/build 一层 ==="
+            ls -la app/build 2>&1 || echo "(无 build)"
+          } | tee ci-logs/apk-list.txt
 
       - name: 上传 Debug APK
         if: success()
