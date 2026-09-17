@@ -2,15 +2,15 @@
 app/build/outputs/apk/debug/app-debug.apk
 === app/build/outputs 是否存在 ===
 total 16
-drwxr-xr-x 4 runner runner 4096 Sep 17 11:06 .
-drwxr-xr-x 6 runner runner 4096 Sep 17 11:06 ..
-drwxr-xr-x 3 runner runner 4096 Sep 17 11:06 apk
-drwxr-xr-x 2 runner runner 4096 Sep 17 11:06 logs
+drwxr-xr-x 4 runner runner 4096 Sep 17 11:13 .
+drwxr-xr-x 6 runner runner 4096 Sep 17 11:13 ..
+drwxr-xr-x 3 runner runner 4096 Sep 17 11:13 apk
+drwxr-xr-x 2 runner runner 4096 Sep 17 11:13 logs
 === 整个 app/build 一层 ===
 total 24
-drwxr-xr-x  6 runner runner 4096 Sep 17 11:06 .
-drwxr-xr-x  4 runner runner 4096 Sep 17 11:06 ..
-drwxr-xr-x  5 runner runner 4096 Sep 17 11:06 generated
-drwxr-xr-x 56 runner runner 4096 Sep 17 11:06 intermediates
-drwxr-xr-x  3 runner runner 4096 Sep 17 11:06 kotlin
-drwxr-xr-x  4 runner runner 4096 Sep 17 11:06 outputs
+drwxr-xr-x  6 runner runner 4096 Sep 17 11:13 .
+drwxr-xr-x  4 runner runner 4096 Sep 17 11:13 ..
+drwxr-xr-x  5 runner runner 4096 Sep 17 11:13 generated
+drwxr-xr-x 56 runner runner 4096 Sep 17 11:13 intermediates
+drwxr-xr-x  3 runner runner 4096 Sep 17 11:13 kotlin
+drwxr-xr-x  4 runner runner 4096 Sep 17 11:13 outputs
