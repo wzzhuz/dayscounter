@@ -14,6 +14,7 @@ on:
 # 而 continue-on-error 会让这一步仍然显示 success —— 静默失效。
 permissions:
   contents: write
+  actions: write
 
 jobs:
   build:
@@ -41,12 +42,19 @@ jobs:
         id: build_debug
         run: gradle assembleDebug --stacktrace --no-daemon
 
+      - name: 列出 APK 产物
+        if: success()
+        run: |
+          echo "=== app/build/outputs 树 ==="
+          find app/build/outputs -type f 2>/dev/null | head -40 || echo "(无 outputs 目录)"
+
       - name: 上传 Debug APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: dayscounter-debug
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
           retention-days: 30
 
       # Release 构建会跑 lintVital，debug 不跑。
@@ -61,7 +69,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dayscounter-release
-          path: app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/**/*.apk
           retention-days: 90
 
       # 沙盒访问 CI 日志可能被网络策略拦截（403）。
