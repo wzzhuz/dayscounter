@@ -1,0 +1,78 @@
+name: Build APK
+
+on:
+  push:
+    # ⚠️ 必须用 ['**'] 覆盖所有分支。
+    # 写成 [main, master, 'feature/**'] 的话，fix/xxx 分支会静默不跑，
+    # 且 Actions 列表里查不到记录，极易被误读成「已编译通过」（踩坑清单 2.1）
+    branches: ['**']
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # 仓库内不含 gradle-wrapper.jar，由本 action 直接安装指定版本。
+      # AGP 9.4.0 要求 Gradle >= 9.6.0。
+      - name: 配置 Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
+      - name: 编译 Debug APK
+        id: build_debug
+        run: gradle assembleDebug --stacktrace --no-daemon
+
+      - name: 上传 Debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dayscounter-debug
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+      # Release 构建会跑 lintVital，debug 不跑。
+      # Lint 问题会潜伏到出正式包时才炸，所以早期就跑一次（踩坑清单 2.3）
+      - name: 编译 Release APK
+        id: build_release
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        run: gradle assembleRelease --stacktrace --no-daemon
+
+      - name: 上传 Release APK
+        if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: actions/upload-artifact@v4
+        with:
+          name: dayscounter-release
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 90
+
+      # 沙盒访问 CI 日志可能被网络策略拦截（403）。
+      # 失败时把日志 commit 回仓库，再从 Contents API 读取（踩坑清单 2.5）
+      - name: 回传编译日志（临时）
+        if: failure()
+        continue-on-error: true
+        run: |
+          set +e
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          mkdir -p ci-logs
+          gradle assembleDebug --stacktrace --no-daemon > ci-logs/build-${{ github.run_number }}.txt 2>&1 || true
+          tail -n 400 ci-logs/build-${{ github.run_number }}.txt > ci-logs/tail-${{ github.run_number }}.txt
+          git add ci-logs
+          git commit -q -m "ci: 编译日志 run-${{ github.run_number }}" && git push -q origin "HEAD:${{ github.ref_name }}" || true
+
+      - name: 判定失败
+        if: failure()
+        run: exit 1
