@@ -93,14 +93,29 @@ jobs:
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
         run: gradle assembleRelease --stacktrace --no-daemon
 
-      - name: 上传 Release APK
+      - name: 上传 Release APK（artifact）
         if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: dayscounter-release
           path: app/build/outputs/apk/release/app-release.apk
           overwrite: true
           if-no-files-found: error
+
+      - name: 提交 Release APK 到仓库
+        if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        run: |
+          set -e
+          mkdir -p apk
+          cp app/build/outputs/apk/release/app-release.apk apk/dayscounter-release.apk
+          ls -la apk/
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add -f apk
+          git commit -q -m "ci: 发布 release APK run-${{ github.run_number }} [skip ci]"
+          git push -q origin "HEAD:${{ github.ref_name }}"
+          echo "Release APK 已提交"
 
       # 沙盒访问 CI 日志可能被网络策略拦截（403）。
       # 失败时把日志 commit 回仓库，再从 Contents API 读取（踩坑清单 2.5）
