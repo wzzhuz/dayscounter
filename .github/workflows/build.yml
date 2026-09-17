@@ -58,14 +58,33 @@ jobs:
       # 用确切文件名而非 glob：glob 在部分 action 版本下匹配行为不稳定。
       # overwrite: true —— v4 默认 false，同名 artifact 已存在时会直接报错，
       # 而这个报错在 Actions 界面上只显示"上传失败"，看不出真实原因。
-      - name: 上传 Debug APK
+      - name: 上传 Debug APK（artifact）
         if: success()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: dayscounter-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           overwrite: true
           if-no-files-found: error
+
+      # 主发布通道：APK 直接 commit 回仓库。
+      # 选它而不是 artifact 的原因：artifact 上传在本仓库持续失败且报错信息不可见，
+      # 而 git push 已在「回传日志」步骤验证可用；APK 落库后随时可下载，也便于留存版本。
+      # ⚠️ commit message 必须带 [skip ci]，否则 push 到 main 会再次触发本 workflow，无限循环。
+      - name: 提交 APK 到仓库
+        if: success()
+        run: |
+          set -e
+          mkdir -p apk
+          cp app/build/outputs/apk/debug/app-debug.apk apk/dayscounter-debug.apk
+          ls -la apk/
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add -f apk
+          git commit -q -m "ci: 发布 debug APK run-${{ github.run_number }} [skip ci]"
+          git push -q origin "HEAD:${{ github.ref_name }}"
+          echo "APK 已提交到 apk/dayscounter-debug.apk"
 
       # Release 构建会跑 lintVital，debug 不跑。
       # Lint 问题会潜伏到出正式包时才炸，所以早期就跑一次（踩坑清单 2.3）
