@@ -9,16 +9,16 @@
 - [x] 写 `specs/day-count/spec.md`
 - [x] 写 `specs/event-management/spec.md`
 - [x] 写 `specs/data-persistence/spec.md`
-- [ ] 写 `openspec/project.md`（三条铁律）
-- [ ] 写 `openspec/AGENTS.md`（指向 my-app-workflow）
-- [ ] 写 `README.md`（架构速览）
+- [x] 写 `openspec/project.md`（三条铁律）
+- [x] 写 `openspec/AGENTS.md`（指向 my-app-workflow）
+- [x] 写 `README.md`（架构速览）
 
 ## 阶段二：推送到 GitHub
 
-- [ ] **先回显目标仓库名与本地源目录，获使用者确认**（踩坑清单 §4.7）
-- [ ] 创建仓库 `wzzhuz/dayscounter`
-- [ ] 推送 `openspec/` 全部内容
-- [ ] **推完立刻列远端根目录校验**（踩坑清单 §4.6）
+- [x] **先回显目标仓库名与本地源目录，获使用者确认**（踩坑清单 §4.7）
+- [x] 创建仓库 `wzzhuz/dayscounter`
+- [x] 推送 `openspec/` 全部内容
+- [x] **推完立刻列远端根目录校验**（踩坑清单 §4.6）
 
 ## 阶段三：工程骨架
 
@@ -27,9 +27,9 @@
 - [ ] **固定 debug.keystore 并引用**（防第二次编译装不上，踩坑清单 §2.4）
 - [ ] 配阿里云 Maven 镜像（否则编译极慢，环境能力边界 §5.1）
 - [ ] `AndroidManifest.xml`：确认**不声明** INTERNET 权限
-- [ ] 建 `.github/workflows/build.yml`
+- [x] 建 `.github/workflows/build.yml`
   - [ ] 触发规则用 `branches: ['**']`（**不要用逐个前缀**，会静默不跑，踩坑清单 §2.1）
-- [ ] 推一次空工程，确认 Actions 确实跑起来并出 APK
+- [x] 推一次空工程，确认 Actions 确实跑起来并出 APK
 
 ## 阶段四：领域层（核心）
 
@@ -65,7 +65,7 @@
   - [ ] 查询返回 `Flow`（自动后台执行 + 变更通知）
   - [ ] `@Transaction` 的 `getEventsWithTags()`
   - [ ] FTS 搜索（标题 + 备注）
-  - [ ] 按标签筛选
+  - [x] 按标签筛选
 - [ ] `EventRepository.kt`
   - [ ] Entity ↔ 领域模型映射
   - [ ] 排序结果缓存（置顶优先 + |天数| 升序）
@@ -77,20 +77,20 @@
 ## 阶段六：UI 层
 
 - [ ] `EventListScreen.kt`
-  - [ ] 列表：天数 / 标题 / 分类 / 标签
-  - [ ] 置顶事件视觉区分
-  - [ ] 「就是今天」（倒数）与「第 N 天」（正数）分别标记
-  - [ ] 搜索入口 + 结果空状态提示
-  - [ ] 按标签筛选
+  - [x] 列表：天数 / 标题 / 分类 / 标签
+  - [x] 置顶事件视觉区分
+  - [x] 「就是今天」（倒数）与「第 N 天」（正数）分别标记
+  - [x] 搜索入口 + 结果空状态提示
+  - [x] 按标签筛选
 - [ ] `EventEditScreen.kt`
-  - [ ] 标题 + 日期为必填，其余有默认值
-  - [ ] 公历 / 农历切换
-  - [ ] **倒数 / 正数模式切换**（默认按日期给值）
-  - [ ] 分类选择（三个默认 + 自定义）
-  - [ ] 标签多选
-  - [ ] 按年重复开关
-  - [ ] 置顶开关
-  - [ ] 删除前确认弹窗
+  - [x] 标题 + 日期为必填，其余有默认值
+  - [x] 公历 / 农历切换
+  - [x] **倒数 / 正数模式切换**（默认按日期给值）
+  - [ ] 分类选择（三个默认 + 自定义）  ← 待做
+  - [ ] 标签多选  ← 待做
+  - [x] 按年重复开关
+  - [x] 置顶开关
+  - [x] 删除前确认弹窗
 - [ ] `TagManageScreen.kt` —— 标签增删改
 - [ ] 导出 / 导入入口（设置页）
 
@@ -106,7 +106,7 @@
 - [ ] 手动验证：删除带标签事件后无孤儿行
 - [ ] 手动验证：加满 25 条事件，确认无数量限制提示
 - [ ] 手动验证：导出 → 清数据 → 导入，字段与标签完整还原
-- [ ] 检查产物 Manifest 无 INTERNET 权限
+- [x] 检查产物 Manifest 无 INTERNET 权限
 - [ ] **手动跑一次 release 构建**（debug 不跑 lintVital，问题会潜伏，踩坑清单 §2.3）
 
 ## 阶段八：收尾
@@ -115,6 +115,18 @@
 - [ ] 更新 `openspec/specs/`（若有实施中发现的口径调整）
 - [ ] 清理临时诊断产物（如 `ci-logs/`，踩坑清单 §2.5）
 - [ ] 等使用者确认后归档
+
+## 实施中发现的新坑（待回填 my-app-workflow/踩坑清单.md）
+
+- AGP 9.0 起内置 Kotlin，**不能再声明 `org.jetbrains.kotlin.android` 插件**，否则构建直接失败
+- AGP 已内置名为 `debug` 的 SigningConfig，用 `create("debug")` 会报 already exists，必须 `getByName("debug")`
+- FTS 实体**不能带 `@PrimaryKey`**（FTS 表用 rowid）
+- `ChineseCalendar` 闰月字段是 `Calendar.IS_LEAP_MONTH`（在基类上），不是 `ChineseCalendar.LEAP_MONTH`
+- `ChineseCalendar` 设年份必须用 `Calendar.EXTENDED_YEAR`，用 ERA+YEAR 是 1–60 的周期年，会静默算错
+- GitHub 新仓库 GITHUB_TOKEN 默认只读，workflow 里要 push 必须显式声明 `permissions: contents: write`
+- 声明了 `permissions:` 块会覆盖默认值，只写 contents 会让 actions 权限变 none，artifact 上传失败
+- `actions/upload-artifact@v4` 同名 artifact 已存在时会失败，需 `overwrite: true`
+- workflow 里 `git add` 被 `.gitignore` 忽略的目录会静默无内容、commit 失败、push 不执行，且步骤仍显示 success
 
 ## 主动跳过
 
