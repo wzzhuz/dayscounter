@@ -25,10 +25,13 @@ android {
         }
     }
 
+    // 固定 debug 签名：Actions 每次新环境会重新生成密钥，
+    // 不固定的话第二次编译的 APK 装不上，必须先卸载，数据全丢（踩坑清单 2.4）
+    //
+    // ⚠️ AGP 已内置名为 "debug" 的 SigningConfig，
+    //    用 create("debug") 会报 "already exists"，必须用 getByName 覆盖其属性。
     signingConfigs {
-        // 固定 debug 签名：Actions 每次新环境会重新生成密钥，
-        // 不固定的话第二次编译的 APK 装不上，必须先卸载，数据全丢（踩坑清单 2.4）
-        create("debug") {
+        getByName("debug") {
             storeFile = file("debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
