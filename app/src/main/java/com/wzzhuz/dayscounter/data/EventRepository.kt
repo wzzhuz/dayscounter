@@ -11,8 +11,12 @@ import com.wzzhuz.dayscounter.domain.DayCountResult
 import com.wzzhuz.dayscounter.domain.Event
 import com.wzzhuz.dayscounter.domain.RepeatType
 import com.wzzhuz.dayscounter.domain.Tag
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.util.UUID
 
@@ -71,7 +75,7 @@ class EventRepository(private val dao: EventDao) {
      * 内部切到 IO 线程执行，调用方无需自己开协程。
      */
     fun deleteAsync(id: String) {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             dao.deleteEvent(id)
         }
     }
@@ -81,9 +85,9 @@ class EventRepository(private val dao: EventDao) {
         event: com.wzzhuz.dayscounter.domain.Event,
         onDone: () -> Unit = {},
     ) {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             save(event)
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { onDone() }
+            withContext(Dispatchers.Main) { onDone() }
         }
     }
 
