@@ -60,6 +60,10 @@ jobs:
 
       # 沙盒访问 CI 日志可能被网络策略拦截（403）。
       # 失败时把日志 commit 回仓库，再从 Contents API 读取（踩坑清单 2.5）
+      # 沙盒访问 CI 日志会被网络策略拦截（403，踩坑清单 5.2）。
+      # 变通：失败时把日志 commit 回仓库，再从 Contents API 读取。
+      # ⚠️ 必须用 git add -f：ci-logs 若被 .gitignore 忽略，
+      #    git add 无内容 → commit 失败 → push 不执行 → 本步骤仍显示 success（静默失效）
       - name: 回传编译日志（临时）
         if: failure()
         continue-on-error: true
@@ -68,10 +72,15 @@ jobs:
           git config user.name "ci-bot"
           git config user.email "ci-bot@users.noreply.github.com"
           mkdir -p ci-logs
-          gradle assembleDebug --stacktrace --no-daemon > ci-logs/build-${{ github.run_number }}.txt 2>&1 || true
-          tail -n 400 ci-logs/build-${{ github.run_number }}.txt > ci-logs/tail-${{ github.run_number }}.txt
-          git add ci-logs
-          git commit -q -m "ci: 编译日志 run-${{ github.run_number }}" && git push -q origin "HEAD:${{ github.ref_name }}" || true
+          gradle assembleDebug --stacktrace --no-daemon > ci-logs/build-${{ github.run_number }}.txt 2>&1
+          echo "=== 最后 200 行 ===" > ci-logs/tail-${{ github.run_number }}.txt
+          tail -n 200 ci-logs/build-${{ github.run_number }}.txt >> ci-logs/tail-${{ github.run_number }}.txt
+          echo "=== 错误行 ===" >> ci-logs/tail-${{ github.run_number }}.txt
+          grep -E "^e: |^w: |FAILED|error:|What went wrong" ci-logs/build-${{ github.run_number }}.txt | head -60 >> ci-logs/tail-${{ github.run_number }}.txt || true
+          git add -f ci-logs
+          git commit -q -m "ci: 编译日志 run-${{ github.run_number }}"
+          git push -q origin "HEAD:${{ github.ref_name }}"
+          echo "日志回传退出码: $?"
 
       - name: 判定失败
         if: failure()
