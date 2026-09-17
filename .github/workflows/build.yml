@@ -55,14 +55,17 @@ jobs:
             ls -la app/build 2>&1 || echo "(无 build)"
           } | tee ci-logs/apk-list.txt
 
+      # 用确切文件名而非 glob：glob 在部分 action 版本下匹配行为不稳定。
+      # overwrite: true —— v4 默认 false，同名 artifact 已存在时会直接报错，
+      # 而这个报错在 Actions 界面上只显示"上传失败"，看不出真实原因。
       - name: 上传 Debug APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: dayscounter-debug
-          path: app/build/outputs/apk/**/*.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          overwrite: true
           if-no-files-found: error
-          retention-days: 30
 
       # Release 构建会跑 lintVital，debug 不跑。
       # Lint 问题会潜伏到出正式包时才炸，所以早期就跑一次（踩坑清单 2.3）
@@ -76,8 +79,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dayscounter-release
-          path: app/build/outputs/apk/**/*.apk
-          retention-days: 90
+          path: app/build/outputs/apk/release/app-release.apk
+          overwrite: true
+          if-no-files-found: error
 
       # 沙盒访问 CI 日志可能被网络策略拦截（403）。
       # 失败时把日志 commit 回仓库，再从 Contents API 读取（踩坑清单 2.5）
