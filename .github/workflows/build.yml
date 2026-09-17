@@ -9,6 +9,12 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+# ⚠️ 关键：GitHub 新仓库的 GITHUB_TOKEN 默认是**只读**的。
+# 不显式声明的话，失败时回传日志的 git push 会被拒绝，
+# 而 continue-on-error 会让这一步仍然显示 success —— 静默失效。
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
