@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,30 +42,54 @@ class MainActivity : ComponentActivity() {
                     var editingId by remember { mutableStateOf<String?>(null) }
                     var isAdding by remember { mutableStateOf(false) }
 
+                    val categories by repository.observeCategories()
+                        .collectAsState(initial = emptyList())
+                    val tags by repository.observeTags()
+                        .collectAsState(initial = emptyList())
+
                     if (isAdding || editingId != null) {
                         val draft = editingId?.let { id -> rememberDraft(repository, id) }
 
-                        // 编辑模式下草稿异步加载，未到位时不显示表单，避免保存覆盖原数据
+                        // 编辑模式下草稿异步加载，未到位时不显示表单，
+                        // 否则会用空值覆盖原数据
                         if (editingId == null || draft != null) {
                             EventEditScreen(
                                 initial = draft,
-                                onSave = { title, date, lunar, repeat, pinned, countUp, note ->
+                                categories = categories,
+                                tags = tags,
+                                onSave = { form ->
                                     val now = System.currentTimeMillis()
-                                    val lunarDate = LunarCalendar.gregorianToLunar(date)
+                                    val lunarDate = LunarCalendar.gregorianToLunar(form.date)
                                     repository.saveAsync(
                                         Event(
                                             id = editingId ?: repository.newId(),
-                                            title = title,
-                                            originDate = date,
-                                            calendarType = if (lunar) CalendarType.LUNAR else CalendarType.GREGORIAN,
-                                            lunarMonth = if (lunar) lunarDate.month else null,
-                                            lunarDay = if (lunar) lunarDate.day else null,
-                                            lunarLeapMonth = if (lunar) lunarDate.isLeapMonth else false,
-                                            countMode = if (countUp) CountMode.COUNTUP else CountMode.COUNTDOWN,
-                                            repeatType = if (repeat) RepeatType.YEARLY else RepeatType.NONE,
-                                            pinned = pinned,
-                                            note = note,
-                                            // 编辑时保留原创建时间，新增时用当前时间
+                                            title = form.title,
+                                            originDate = form.date,
+                                            calendarType = if (form.lunar) {
+                                                CalendarType.LUNAR
+                                            } else {
+                                                CalendarType.GREGORIAN
+                                            },
+                                            lunarMonth = if (form.lunar) lunarDate.month else null,
+                                            lunarDay = if (form.lunar) lunarDate.day else null,
+                                            lunarLeapMonth = if (form.lunar) {
+                                                lunarDate.isLeapMonth
+                                            } else false,
+                                            countMode = if (form.countUp) {
+                                                CountMode.COUNTUP
+                                            } else {
+                                                CountMode.COUNTDOWN
+                                            },
+                                            repeatType = if (form.repeat) {
+                                                RepeatType.YEARLY
+                                            } else {
+                                                RepeatType.NONE
+                                            },
+                                            categoryId = form.categoryId,
+                                            pinned = form.pinned,
+                                            note = form.note,
+                                            tags = tags.filter { it.id in form.tagIds },
+                                            // 编辑时保留原创建时间
                                             createdAt = draft?.createdAt ?: now,
                                             updatedAt = now,
                                         )
@@ -74,6 +99,10 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 onCancel = { isAdding = false; editingId = null },
+                                onCreateCategory = { name ->
+                                    repository.findOrCreateCategoryAsync(name)
+                                },
+                                onCreateTag = { name -> repository.createTagAsync(name) },
                                 onDelete = if (draft != null) {
                                     { repository.deleteAsync(draft.id); editingId = null }
                                 } else null,
@@ -111,6 +140,8 @@ private fun rememberDraft(repository: EventRepository, id: String): EventDraft? 
                 pinned = it.pinned,
                 countUp = it.countMode == CountMode.COUNTUP,
                 note = it.note,
+                categoryId = it.categoryId,
+                tagIds = it.tags.map { t -> t.id },
                 createdAt = it.createdAt,
             )
         }
