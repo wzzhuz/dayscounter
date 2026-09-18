@@ -97,6 +97,27 @@ interface EventDao {
     @Query("DELETE FROM tags WHERE id = :id")
     suspend fun deleteTag(id: String)
 
+    // ---------- 分类 ----------
+
+    @Query("SELECT * FROM categories ORDER BY sortOrder ASC, name ASC")
+    fun observeCategories(): Flow<List<CategoryEntity>>
+
+    /** 一次性查询（Flow 无法在 suspend 里直接取值） */
+    @Query("SELECT * FROM categories WHERE name = :name LIMIT 1")
+    suspend fun findCategoryByName(name: String): CategoryEntity?
+
+    @Query("SELECT * FROM categories WHERE id = :id LIMIT 1")
+    suspend fun findCategoryById(id: String): CategoryEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCategory(category: CategoryEntity)
+
+    @Query("DELETE FROM categories WHERE id = :id")
+    suspend fun deleteCategory(id: String)
+
+    @Query("UPDATE events SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearCategoryOfEvents(id: String)
+
     // ---------- 导出用（BackupManager） ----------
 
     @Query("SELECT * FROM events ORDER BY createdAt ASC")
