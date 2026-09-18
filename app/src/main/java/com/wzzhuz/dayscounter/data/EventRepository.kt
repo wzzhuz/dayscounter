@@ -2,7 +2,6 @@ package com.wzzhuz.dayscounter.data
 
 import com.wzzhuz.dayscounter.data.db.EventDao
 import com.wzzhuz.dayscounter.data.db.EventEntity
-import com.wzzhuz.dayscounter.data.db.EventTagCrossRef
 import com.wzzhuz.dayscounter.data.db.EventWithTags
 import com.wzzhuz.dayscounter.data.db.TagEntity
 import com.wzzhuz.dayscounter.domain.CalendarType
@@ -56,6 +55,39 @@ class EventRepository(private val dao: EventDao) {
     fun observeTags(): Flow<List<Tag>> =
         dao.observeTags().map { list -> list.map { Tag(it.id, it.name, it.colorArgb) } }
 
+    fun observeCategories(): Flow<List<Category>> =
+        dao.observeCategories().map { list -> list.map { Category(it.id, it.name, it.builtIn) } }
+
+    /**
+     * 按名字取分类，不存在则创建。
+     *
+     * 同名直接复用而非新建，否则「家人」会被创建成两个不同 id，
+     * 按分类筛选时看起来像漏了事件。
+     */
+    suspend fun findOrCreateCategory(name: String): String {
+        val trimmed = name.trim()
+        require(trimmed.isNotBlank()) { "分类名不能为空" }
+        dao.findCategoryByName(trimmed)?.let { return it.id }
+        val id = "cat_${java.util.UUID.randomUUID()}"
+        dao.insertCategory(
+            com.wzzhuz.dayscounter.data.db.CategoryEntity(
+                id = id, name = trimmed, sortOrder = 100, builtIn = false
+            )
+        )
+        return id
+    }
+
+    /**
+     * 删除分类。**必须先把引用它的事件解绑**，
+     * 否则那些事件的 categoryId 指向已删除的分类，变成脏引用。
+     */
+    fun deleteCategoryAsync(id: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            dao.clearCategoryOfEvents(id)
+            dao.deleteCategory(id)
+        }
+    }
+
     suspend fun getById(id: String): Event? = dao.getById(id)?.toDomain()
 
     suspend fun save(event: Event) {
@@ -100,6 +132,16 @@ class EventRepository(private val dao: EventDao) {
     }
 
     suspend fun deleteTag(id: String) = dao.deleteTag(id)
+
+    /** 同步创建标签（供 UI 回调直接调用）。创建后 tags Flow 自动刷新 */
+    fun createTagAsync(name: String) {
+        CoroutineScope(Dispatchers.IO).launch { createTag(name.trim()) }
+    }
+
+    /** 同步版 findOrCreateCategory（供 UI 回调直接调用） */
+    fun findOrCreateCategoryAsync(name: String) {
+        CoroutineScope(Dispatchers.IO).launch { findOrCreateCategory(name) }
+    }
 
     fun newId(): String = UUID.randomUUID().toString()
 }
