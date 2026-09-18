@@ -2,6 +2,7 @@ package com.wzzhuz.dayscounter.data
 
 import androidx.room.withTransaction
 import com.wzzhuz.dayscounter.data.db.AppDatabase
+import com.wzzhuz.dayscounter.data.db.CategoryEntity
 import com.wzzhuz.dayscounter.data.db.EventEntity
 import com.wzzhuz.dayscounter.data.db.EventTagCrossRef
 import com.wzzhuz.dayscounter.data.db.TagEntity
@@ -29,10 +30,14 @@ class BackupManager(private val db: AppDatabase) {
         val events = db.eventDao().exportAll()
         val tags = db.eventDao().exportTags()
         val refs = db.eventDao().exportRefs()
+        val categories = db.eventDao().exportCategories()
         return json.encodeToString(
             BackupFile(
-                version = 1,
+                version = 2,
                 exportedAt = System.currentTimeMillis(),
+                // 分类必须导出：换机重建库时只 seed 三个默认分类，
+                // 不导出的话自定义分类丢失，事件的 categoryId 变成指向空无的脏引用
+                categories = categories.map { CategoryDto(it.id, it.name, it.builtIn) },
                 tags = tags.map { TagDto(it.id, it.name, it.colorArgb) },
                 events = events.map { e ->
                     EventDto(
@@ -69,12 +74,15 @@ class BackupManager(private val db: AppDatabase) {
         // 先整体解析成功，才开始写库——避免解析到一半报错导致部分写入
         val events = backup.events.map { it.toEntity() }
         val tags = backup.tags.map { TagEntity(it.id, it.name, it.colorArgb) }
+        val categories = backup.categories.map { CategoryEntity(it.id, it.name, 100, it.builtIn) }
         val refs = backup.events.flatMap { e ->
             e.tagIds.map { EventTagCrossRef(e.id, it) }
         }
 
         db.withTransaction {
             db.eventDao().deleteAllEvents()
+            // 分类先于事件写入：事件的 categoryId 依赖分类已存在
+            categories.forEach { db.eventDao().insertCategory(it) }
             tags.forEach { db.eventDao().insertTag(it) }
             db.eventDao().insertEvents(events)
             db.eventDao().insertCrossRefs(refs)
@@ -87,9 +95,13 @@ class BackupManager(private val db: AppDatabase) {
 data class BackupFile(
     val version: Int,
     val exportedAt: Long,
+    val categories: List<CategoryDto> = emptyList(),
     val tags: List<TagDto> = emptyList(),
     val events: List<EventDto>,
 )
+
+@Serializable
+data class CategoryDto(val id: String, val name: String, val builtIn: Boolean = false)
 
 @Serializable
 data class TagDto(val id: String, val name: String, val colorArgb: Int? = null)
