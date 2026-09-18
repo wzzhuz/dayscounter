@@ -128,4 +128,7 @@ interface EventDao {
 
     @Query("SELECT * FROM event_tag_cross_ref")
     suspend fun exportRefs(): List<EventTagCrossRef>
+
+    @Query("SELECT * FROM categories ORDER BY sortOrder ASC, name ASC")
+    suspend fun exportCategories(): List<CategoryEntity>
 }
