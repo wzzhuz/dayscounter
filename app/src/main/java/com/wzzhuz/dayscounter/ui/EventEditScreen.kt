@@ -3,6 +3,7 @@ package com.wzzhuz.dayscounter.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,9 +13,11 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,7 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.wzzhuz.dayscounter.domain.CalendarType
+import com.wzzhuz.dayscounter.data.Category
+import com.wzzhuz.dayscounter.data.Tag
 import com.wzzhuz.dayscounter.domain.LunarCalendar
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -66,63 +70,47 @@ fun DatePickerModal(
 
 private val DATE_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy 年 M 月 d 日")
 
-/** 编辑 / 新增事件的表单状态 */
-private class EventFormState(
-    initialTitle: String,
-    initialDate: LocalDate,
-    initialLunar: Boolean,
-    initialRepeat: Boolean,
-    initialPinned: Boolean,
-    initialCountUp: Boolean,
-    initialNote: String,
-) {
-    var title by mutableStateOf(initialTitle)
-    var date by mutableStateOf(initialDate)
-    var asLunar by mutableStateOf(initialLunar)
-    var repeatYearly by mutableStateOf(initialRepeat)
-    var pinned by mutableStateOf(initialPinned)
-    var countUp by mutableStateOf(initialCountUp)
-    var note by mutableStateOf(initialNote)
-    var showDatePicker by mutableStateOf(false)
-
-    /** 农历模式下，把公历选择结果换算成农历月日后保存 */
-    fun resolvedCalendarType(): CalendarType =
-        if (asLunar) CalendarType.LUNAR else CalendarType.GREGORIAN
-
-    fun lunarText(): String {
-        val ld = LunarCalendar.gregorianToLunar(date)
-        return "农历${if (ld.isLeapMonth) "闰" else ""}${ld.month}月${ld.day}日"
-    }
-}
-
 /**
  * 新增 / 编辑事件页。
  *
  * 记录成本必须低：标题 + 日期为必填，其余全部有默认值且有合理初始状态。
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EventEditScreen(
     initial: EventDraft?,
-    onSave: (title: String, date: LocalDate, lunar: Boolean, repeat: Boolean, pinned: Boolean, countUp: Boolean, note: String) -> Unit,
+    categories: List<Category>,
+    tags: List<Tag>,
+    onSave: (EventFormResult) -> Unit,
     onCancel: () -> Unit,
+    onCreateCategory: (String) -> Unit,
+    onCreateTag: (String) -> Unit,
     onDelete: (() -> Unit)? = null,
 ) {
-    val state = remember {
-        EventFormState(
-            initialTitle = initial?.title ?: "",
-            initialDate = initial?.date ?: LocalDate.now(),
-            initialLunar = initial?.lunar ?: false,
-            initialRepeat = initial?.repeat ?: false,
-            initialPinned = initial?.pinned ?: false,
-            initialCountUp = initial?.countUp ?: (initial?.date?.isBefore(LocalDate.now()) == true),
-            initialNote = initial?.note ?: "",
-        )
+    var title by remember { mutableStateOf(initial?.title ?: "") }
+    var date by remember { mutableStateOf(initial?.date ?: LocalDate.now()) }
+    var asLunar by remember { mutableStateOf(initial?.lunar ?: false) }
+    var repeatYearly by remember { mutableStateOf(initial?.repeat ?: false) }
+    var pinned by remember { mutableStateOf(initial?.pinned ?: false) }
+    var countUp by remember {
+        mutableStateOf(initial?.countUp ?: (initial?.date?.isBefore(LocalDate.now()) == true))
+    }
+    var note by remember { mutableStateOf(initial?.note ?: "") }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    var categoryId by remember { mutableStateOf(initial?.categoryId) }
+    var selectedTagIds by remember {
+        mutableStateOf(initial?.tagIds?.toSet() ?: emptySet())
     }
 
-    androidx.compose.material3.Scaffold(
+    val lunarText: String? = if (asLunar) {
+        val ld = LunarCalendar.gregorianToLunar(date)
+        "农历${if (ld.isLeapMonth) "闰" else ""}${ld.month}月${ld.day}日"
+    } else null
+
+    Scaffold(
         topBar = {
-            androidx.compose.material3.TopAppBar(
+            TopAppBar(
                 title = { Text(if (initial == null) "新增事件" else "编辑事件") },
                 navigationIcon = {
                     TextButton(onClick = onCancel) { Text("取消") }
@@ -130,19 +118,23 @@ fun EventEditScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            if (state.title.isNotBlank()) {
+                            if (title.isNotBlank()) {
                                 onSave(
-                                    state.title.trim(),
-                                    state.date,
-                                    state.asLunar,
-                                    state.repeatYearly,
-                                    state.pinned,
-                                    state.countUp,
-                                    state.note.trim(),
+                                    EventFormResult(
+                                        title = title.trim(),
+                                        date = date,
+                                        lunar = asLunar,
+                                        repeat = repeatYearly,
+                                        pinned = pinned,
+                                        countUp = countUp,
+                                        note = note.trim(),
+                                        categoryId = categoryId,
+                                        tagIds = selectedTagIds.toList(),
+                                    )
                                 )
                             }
                         },
-                        enabled = state.title.isNotBlank(),
+                        enabled = title.isNotBlank(),
                     ) { Text("保存") }
                 }
             )
@@ -156,8 +148,8 @@ fun EventEditScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             OutlinedTextField(
-                value = state.title,
-                onValueChange = { state.title = it },
+                value = title,
+                onValueChange = { title = it },
                 label = { Text("标题") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -167,18 +159,24 @@ fun EventEditScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { state.showDatePicker = true }
+                    .clickable { showDatePicker = true }
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column {
-                    Text("日期", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(state.date.format(DATE_FMT), style = MaterialTheme.typography.titleMedium)
-                    if (state.asLunar) {
-                        Text(state.lunarText(), style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        "日期",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(date.format(DATE_FMT), style = MaterialTheme.typography.titleMedium)
+                    lunarText?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                     }
                 }
                 Text("更改", color = MaterialTheme.colorScheme.primary)
@@ -187,34 +185,76 @@ fun EventEditScreen(
             SwitchRow(
                 label = "按农历记录",
                 sub = "勾选后按农历月日重复（用于家人生日、春节）",
-                checked = state.asLunar,
-                onCheckedChange = { state.asLunar = it },
+                checked = asLunar,
+                onCheckedChange = { asLunar = it },
             )
 
             SwitchRow(
                 label = "每年重复",
                 sub = "生日、纪念日",
-                checked = state.repeatYearly,
-                onCheckedChange = { state.repeatYearly = it },
+                checked = repeatYearly,
+                onCheckedChange = { repeatYearly = it },
             )
 
             SwitchRow(
                 label = "置顶",
                 sub = "置顶事件始终排在最前",
-                checked = state.pinned,
-                onCheckedChange = { state.pinned = it },
+                checked = pinned,
+                onCheckedChange = { pinned = it },
             )
 
             SwitchRow(
                 label = "正数计数",
                 sub = "出生当天算「第 1 天」；不勾选则为倒数（今天算 0）",
-                checked = state.countUp,
-                onCheckedChange = { state.countUp = it },
+                checked = countUp,
+                onCheckedChange = { countUp = it },
+            )
+
+            // ---- 分类（单值） ----
+            SectionLabel("分类")
+            ChipSingleSelect(
+                items = categories,
+                selectedId = categoryId,
+                labelOf = { it.name },
+                idOf = { it.id },
+                onSelect = { categoryId = it },
+            )
+            QuickCreateRow(
+                placeholder = "新建分类…",
+                onCreate = onCreateCategory,
+            )
+
+            // ---- 标签（多值） ----
+            SectionLabel("标签")
+            if (tags.isEmpty()) {
+                Text(
+                    "还没有标签，可以在下面新建一个。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                ChipMultiSelect(
+                    items = tags,
+                    selectedIds = selectedTagIds,
+                    labelOf = { it.name },
+                    idOf = { it.id },
+                    onToggle = { id ->
+                        selectedTagIds = if (id in selectedTagIds) {
+                            selectedTagIds - id
+                        } else {
+                            selectedTagIds + id
+                        }
+                    },
+                )
+            }
+            QuickCreateRow(
+                placeholder = "新建标签…",
+                onCreate = onCreateTag,
             )
 
             OutlinedTextField(
-                value = state.note,
-                onValueChange = { state.note = it },
+                value = note,
+                onValueChange = { note = it },
                 label = { Text("备注（可选）") },
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 3,
@@ -244,13 +284,23 @@ fun EventEditScreen(
         }
     }
 
-    if (state.showDatePicker) {
+    if (showDatePicker) {
         DatePickerModal(
-            initialDate = state.date,
-            onDateSelected = { state.date = it; state.showDatePicker = false },
-            onDismiss = { state.showDatePicker = false },
+            initialDate = date,
+            onDateSelected = { date = it; showDatePicker = false },
+            onDismiss = { showDatePicker = false },
         )
     }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 4.dp),
+    )
 }
 
 @Composable
@@ -270,12 +320,28 @@ private fun SwitchRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.bodyLarge)
-            Text(sub, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                sub,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
+
+/** 编辑页提交结果 */
+data class EventFormResult(
+    val title: String,
+    val date: LocalDate,
+    val lunar: Boolean,
+    val repeat: Boolean,
+    val pinned: Boolean,
+    val countUp: Boolean,
+    val note: String,
+    val categoryId: String?,
+    val tagIds: List<String>,
+)
 
 /** 编辑页的初始数据（从已有事件映射而来） */
 data class EventDraft(
@@ -287,5 +353,7 @@ data class EventDraft(
     val pinned: Boolean,
     val countUp: Boolean,
     val note: String,
+    val categoryId: String? = null,
+    val tagIds: List<String> = emptyList(),
     val createdAt: Long = 0L,
 )
