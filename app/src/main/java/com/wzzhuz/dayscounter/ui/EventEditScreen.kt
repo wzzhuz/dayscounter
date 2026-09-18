@@ -27,7 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.wzzhuz.dayscounter.data.Category
-import com.wzzhuz.dayscounter.data.Tag
+import com.wzzhuz.dayscounter.domain.Tag
 import com.wzzhuz.dayscounter.domain.LunarCalendar
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
