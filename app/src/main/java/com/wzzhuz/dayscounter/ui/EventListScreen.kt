@@ -3,6 +3,8 @@ package com.wzzhuz.dayscounter.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,14 +16,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,10 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.collectAsState
 import com.wzzhuz.dayscounter.data.EventRepository
 import com.wzzhuz.dayscounter.data.EventRow
+import com.wzzhuz.dayscounter.domain.CalendarType
 import com.wzzhuz.dayscounter.domain.DayCountResult
+import com.wzzhuz.dayscounter.domain.RepeatType
 
 /**
  * 事件列表页。
@@ -42,24 +46,28 @@ import com.wzzhuz.dayscounter.domain.DayCountResult
  * **排序由 Repository 完成**，此处只做渲染 ——
  * items{} 内禁止出现 indexOfFirst / find / sortedBy（O(n²) 陷阱）。
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EventListScreen(
     repository: EventRepository,
     onAddClick: () -> Unit,
     onEventClick: (EventRow) -> Unit,
-    onSearchClick: () -> Unit = {},
 ) {
-    val rows by repository.observeRows().collectAsState(initial = emptyList())
+    val tags by repository.observeTags().collectAsState(initial = emptyList())
+    var selectedTagId by remember { mutableStateOf<String?>(null) }
+
+    // 选中标签时走按标签筛选的查询，否则查全量
+    val rows by remember(selectedTagId) {
+        if (selectedTagId == null) {
+            repository.observeRows()
+        } else {
+            repository.observeByTag(selectedTagId!!)
+        }
+    }.collectAsState(initial = emptyList())
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("倒数日") },
-                actions = {
-                    TextButton(onClick = onSearchClick) { Text("搜索") }
-                }
-            )
+            TopAppBar(title = { Text("倒数日") })
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddClick) {
@@ -67,37 +75,66 @@ fun EventListScreen(
             }
         }
     ) { padding ->
-        if (rows.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                Text(
-                    text = "暂无事件。点击右下角 + 添加第一个重要日子。",
-                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(rows, key = { it.event.id }) { row ->
-                    EventRowCard(
-                        row = row,
-                        onClick = { onEventClick(row) },
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // 标签筛选行。没有标签时不显示，避免空占一行
+            if (tags.isNotEmpty()) {
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = selectedTagId == null,
+                        onClick = { selectedTagId = null },
+                        label = { Text("全部") },
                     )
+                    tags.forEach { tag ->
+                        FilterChip(
+                            selected = selectedTagId == tag.id,
+                            onClick = {
+                                selectedTagId =
+                                    if (selectedTagId == tag.id) null else tag.id
+                            },
+                            label = { Text(tag.name) },
+                        )
+                    }
+                }
+            }
+
+            if (rows.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        text = if (selectedTagId == null) {
+                            "暂无事件。点击右下角 + 添加第一个重要日子。"
+                        } else {
+                            "该标签下没有事件。"
+                        },
+                        modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(rows, key = { it.event.id }) { row ->
+                        EventRowCard(
+                            row = row,
+                            onClick = { onEventClick(row) },
+                        )
+                    }
                 }
             }
         }
     }
-
 }
 
 /**
@@ -143,6 +180,9 @@ fun EventRowCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (row.event.tags.isNotEmpty()) {
+                    TagChips(names = row.event.tags.map { it.name })
+                }
             }
             Text(
                 text = row.result.displayText(),
@@ -155,8 +195,8 @@ fun EventRowCard(
 
 private fun buildSubtitle(row: EventRow): String {
     val datePart = row.nextOccurrence.toString()
-    val lunar = if (row.event.calendarType == com.wzzhuz.dayscounter.domain.CalendarType.LUNAR) " · 农历" else ""
-    val repeat = if (row.event.repeatType == com.wzzhuz.dayscounter.domain.RepeatType.YEARLY) " · 每年" else ""
+    val lunar = if (row.event.calendarType == CalendarType.LUNAR) " · 农历" else ""
+    val repeat = if (row.event.repeatType == RepeatType.YEARLY) " · 每年" else ""
     return datePart + lunar + repeat
 }
 
