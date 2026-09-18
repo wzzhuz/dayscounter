@@ -146,6 +146,19 @@ class EventRepository(private val dao: EventDao) {
     fun newId(): String = UUID.randomUUID().toString()
 }
 
+/**
+ * 分类的领域模型。
+ *
+ * **分类与标签是两套独立体系**：
+ * - 分类：单值，粗粒度归档（纪念日 / 工作 / 生活 + 自定义）
+ * - 标签：多值，交叉检索（见 domain.Tag）
+ */
+data class Category(
+    val id: String,
+    val name: String,
+    val builtIn: Boolean = false,
+)
+
 /** 列表的一行：领域模型 + 已算好的天数 + 已推导的下一次发生日 */
 data class EventRow(
     val event: Event,
