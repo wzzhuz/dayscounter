@@ -96,7 +96,7 @@ abstract class AppDatabase : RoomDatabase() {
                         db.execSQL(
                             "INSERT OR IGNORE INTO categories (id, name, sortOrder, builtIn) " +
                                 "VALUES (?, ?, ?, 1)",
-                            arrayOf(id, name, order)
+                            arrayOf<Any>(id, name, order)
                         )
                     }
                     db.setTransactionSuccessful()
