@@ -86,8 +86,8 @@
   - [x] 标题 + 日期为必填，其余有默认值
   - [x] 公历 / 农历切换
   - [x] **倒数 / 正数模式切换**（默认按日期给值）
-  - [ ] 分类选择（三个默认 + 自定义）  ← 待做
-  - [ ] 标签多选  ← 待做
+  - [x] 分类选择（三个默认 + 自定义）
+  - [x] 标签多选
   - [x] 按年重复开关
   - [x] 置顶开关
   - [x] 删除前确认弹窗
@@ -127,6 +127,9 @@
 - 声明了 `permissions:` 块会覆盖默认值，只写 contents 会让 actions 权限变 none，artifact 上传失败
 - `actions/upload-artifact@v4` 同名 artifact 已存在时会失败，需 `overwrite: true`
 - workflow 里 `git add` 被 `.gitignore` 忽略的目录会静默无内容、commit 失败、push 不执行，且步骤仍显示 success
+- `by` 委托（`var x by remember { mutableStateOf(...) }`）依赖 `import androidx.compose.runtime.getValue/setValue`。
+  按「未使用 import」自动清理会误删这两个 —— 它们在代码里不出现标识符名，
+  症状是 `Type 'MutableState<String>' has no method 'setValue'`，**报错信息完全指不到根因**
 
 ## 主动跳过
 
