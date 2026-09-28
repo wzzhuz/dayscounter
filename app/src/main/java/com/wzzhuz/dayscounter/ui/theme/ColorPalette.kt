@@ -97,6 +97,27 @@ object ColorPalette {
         name = "灰",
     )
 
+    /**
+     * 供编辑页「自定义颜色」选择的候选列表。
+     *
+     * ⚠️ **顺序即契约**：事件把选中的**索引**存进 `colorArgb` 列，
+     * 重排本列表会让已有事件的配色错乱。**只能追加，不能重排或插入**。
+     *
+     * 只暴露这几组而不开放任意取色器：
+     * 任意取色可能选出高饱和背景，把天数数字糊掉——
+     * 违反「好看的前提是能看清」。
+     */
+    val PICKABLE: List<GradientPair> = listOf(
+        ANNIVERSARY, WORK, LIFE, FESTIVAL
+    ) + EXTRAS
+
+    /**
+     * 按索引取配色，供事件自定义色反查。
+     * 索引越界（如调色板调整后）时返回 null，调用方回退到分类色。
+     */
+    fun byIndex(index: Int?): GradientPair? =
+        if (index == null || index < 0 || index >= PICKABLE.size) null else PICKABLE[index]
+
     /** 归档事件的降饱和色：视觉上明确「这不是活跃数据」 */
     val ARCHIVED = GradientPair(
         start = Color(0xFFEFEFEF),
