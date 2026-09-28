@@ -62,14 +62,23 @@ object LunarCalendar {
     /**
      * 给定农历月日，求其在指定公历年份对应的公历日期。
      * 用于农历事件的按年重复推导——**每年重新转换，不做 +365 天近似**。
+     *
+     * ⚠️ 必须做「回译校验」：
+     * 农历腊月有时只有 29 天（没有腊月三十），此时 ICU 在 lenient 模式下
+     * **不会抛异常**，而是静默滚动到次年正月初一。
+     * 结果就是「除夕」在某些年份被算成春节前一天甚至更离谱。
+     *
+     * 做法：转出后立刻转回农历，若月份对不上，说明这一天不存在，
+     * 回退到该月最后一天（day - 1）。
      */
     fun lunarDateInYear(lunarMonth: Int, lunarDay: Int, gregorianYear: Int): LocalDate {
-        return try {
-            lunarToGregorian(gregorianYear, lunarMonth, lunarDay, isLeapMonth = false)
-        } catch (e: IllegalArgumentException) {
-            // 该年无此农历日（极罕见），回退到该年 12 月 31 日，保证推导不中断
-            LocalDate.of(gregorianYear, 12, 31)
+        val candidate = lunarToGregorian(gregorianYear, lunarMonth, lunarDay, isLeapMonth = false)
+        val back = gregorianToLunar(candidate)
+        if (back.month != lunarMonth && lunarDay > 1) {
+            // 该月没有这一天，回退一天（腊月三十 → 腊月廿九）
+            return lunarToGregorian(gregorianYear, lunarMonth, lunarDay - 1, isLeapMonth = false)
         }
+        return candidate
     }
 }
 
