@@ -39,7 +39,10 @@ class BackupManager(private val db: AppDatabase) {
                 // 不导出的话自定义分类丢失，事件的 categoryId 变成指向空无的脏引用
                 categories = categories.map { CategoryDto(it.id, it.name, it.builtIn) },
                 tags = tags.map { TagDto(it.id, it.name, it.colorArgb) },
-                events = events.map { e ->
+                // exportAllWithArchived 返回 EventWithTags，
+                // 事件字段在 .event 上，直接用 e.id 会编译失败
+                events = events.map { row ->
+                    val e = row.event
                     EventDto(
                         id = e.id,
                         title = e.title,
