@@ -22,6 +22,8 @@ import androidx.room.PrimaryKey
     indices = [
         Index("pinned"),
         Index("categoryId"),
+        // 主列表恒查 archivedAt IS NULL，加索引避免全表扫
+        Index("archivedAt"),
     ]
 )
 data class EventEntity(
@@ -51,6 +53,18 @@ data class EventEntity(
 
     /** 提前几天提醒；null = 不提醒。供 add-event-reminder change 使用 */
     val reminderDaysBefore: Int? = null,
+
+    /**
+     * 归档时间；**null = 未归档**。
+     * 归档是软删除：主列表查 `archivedAt IS NULL`，数据仍在库中可恢复。
+     */
+    val archivedAt: Long? = null,
+
+    /**
+     * 卡片自定义色；null = 跟随分类色。
+     * 只存起始色，结束色由调色板推导，避免两个字段不一致。
+     */
+    val colorArgb: Int? = null,
 
     val createdAt: Long,
     val updatedAt: Long,
