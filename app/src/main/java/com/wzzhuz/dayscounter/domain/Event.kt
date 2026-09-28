@@ -33,6 +33,12 @@ data class Event(
     /** 提前几天提醒；null = 不提醒。供 add-event-reminder change 使用 */
     val reminderDaysBefore: Int? = null,
 
+    /** 归档时间；null = 未归档。归档是软删除，数据可恢复 */
+    val archivedAt: Long? = null,
+
+    /** 卡片自定义色；null = 跟随分类色 */
+    val colorArgb: Int? = null,
+
     val tags: List<Tag> = emptyList(),
 
     val createdAt: Long = 0L,
