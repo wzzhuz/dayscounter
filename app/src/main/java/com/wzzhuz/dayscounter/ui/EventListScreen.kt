@@ -243,9 +243,9 @@ fun EventRowCard(
  * 写成 `let { if (...) A else B } ?: C` 且分支类型不同，Kotlin 会推断成 Any，编译失败。
  */
 private fun resolveGradient(category: Category?, eventColorArgb: Int?): GradientPair {
-    eventColorArgb?.let {
-        val c = Color(it)
-        return GradientPair(c, c, ColorPalette.UNCATEGORIZED.accent, "自定义")
+    // colorArgb 存的是 ColorPalette.PICKABLE 的**索引**，不是颜色数值
+    eventColorArgb?.let { idx ->
+        ColorPalette.byIndex(idx)?.let { return it }
     }
     val cat = category ?: return ColorPalette.UNCATEGORIZED
     if (cat.colorStartArgb != null && cat.colorEndArgb != null) {
