@@ -109,6 +109,7 @@ private fun AppContent(repository: EventRepository, backupManager: BackupManager
                             countMode = if (form.countUp) CountMode.COUNTUP else CountMode.COUNTDOWN,
                             repeatType = if (form.repeat) RepeatType.YEARLY else RepeatType.NONE,
                             categoryId = form.categoryId,
+                            colorArgb = form.colorArgb,
                             pinned = form.pinned,
                             note = form.note,
                             tags = tags.filter { it.id in form.tagIds },
@@ -296,6 +297,7 @@ private fun rememberDraft(repository: EventRepository, id: String): EventDraft? 
                 countUp = it.countMode == CountMode.COUNTUP,
                 note = it.note,
                 categoryId = it.categoryId,
+                colorArgb = it.colorArgb,
                 tagIds = it.tags.map { t -> t.id },
                 createdAt = it.createdAt,
             )
