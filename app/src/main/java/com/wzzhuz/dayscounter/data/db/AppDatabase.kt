@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CategoryEntity::class,
         EventFts::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -37,8 +37,43 @@ abstract class AppDatabase : RoomDatabase() {
             Room.databaseBuilder(context, AppDatabase::class.java, DB_NAME)
                 .addCallback(FtsTriggerCallback())
                 .addCallback(SeedCallback())
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
+
+        /**
+         * 2 → 3：归档字段 + 配色字段。
+         *
+         * **必须写显式迁移**：使用者手机上已有真实事件，
+         * `fallbackToDestructiveMigration` = 数据全丢。
+         * 这里只加列，不动任何已有数据。
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE events ADD COLUMN archivedAt INTEGER")
+                db.execSQL("ALTER TABLE events ADD COLUMN colorArgb INTEGER")
+                db.execSQL("ALTER TABLE categories ADD COLUMN colorStartArgb INTEGER")
+                db.execSQL("ALTER TABLE categories ADD COLUMN colorEndArgb INTEGER")
+                // 建索引：主列表恒查 archivedAt IS NULL
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_events_archivedAt` ON `events` (`archivedAt`)")
+
+                // 为已有默认分类回填配色（与 ColorPalette 保持一致）
+                backfillCategoryColor(db, "纪念日", 0xFFFCE4EC.toInt(), 0xFFF8BBD0.toInt())
+                backfillCategoryColor(db, "工作", 0xFFE3F2FD.toInt(), 0xFF90CAF9.toInt())
+                backfillCategoryColor(db, "生活", 0xFFE8F5E9.toInt(), 0xFFA5D6A7.toInt())
+            }
+
+            private fun backfillCategoryColor(
+                db: SupportSQLiteDatabase,
+                name: String,
+                start: Int,
+                end: Int,
+            ) {
+                db.execSQL(
+                    "UPDATE categories SET colorStartArgb = ?, colorEndArgb = ? WHERE name = ?",
+                    arrayOf<Any>(start, end, name)
+                )
+            }
+        }
 
         /**
          * 1 → 2：新增 categories 表（分类功能）。
