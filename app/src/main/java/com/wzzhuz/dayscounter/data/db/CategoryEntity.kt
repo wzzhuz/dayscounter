@@ -28,4 +28,11 @@ data class CategoryEntity(
 
     /** 默认分类不可删除 */
     val builtIn: Boolean = false,
+
+    /**
+     * 渐变起始色 / 结束色（ARGB）。
+     * null = 由名称哈希从调色板分配（保证同名分类颜色稳定）。
+     */
+    val colorStartArgb: Int? = null,
+    val colorEndArgb: Int? = null,
 )
