@@ -28,7 +28,7 @@
 - [x] `addFromLibrary(item, year)`：农历走 `lunarDateInYear`，公历走 `LocalDate.of(year, m, d)`
 - [x] **已过期则取下一年**（Spec Scenario: 库中的条目已过期）
 - [x] 库条目带建议分类「节日」，自动设每年重复
-- [ ] 回归校验：春节/中秋换算结果与已知日期比对
+- [ ] 回归校验：春节/中秋换算结果与已知日期比对  ← **需真机**：依赖 `android.icu`，沙盒无法执行
 
 ## 三、日期计算器
 
@@ -63,9 +63,10 @@
 
 ## 七、收尾
 
-- [ ] 代码与 spec 逐条比对（尤其「已过期取下一年的节日」）
-- [ ] 更新 `openspec/specs/`（归档后主列表口径变化）
-- [ ] 回填新坑到 `my-app-workflow/踩坑清单.md`
+- [x] 代码与 spec 逐条比对（尤其「已过期取下一年的节日」）
+      —— 公历分支已用等效算法验证：2026-09-28 添加元旦→2027-01-01，圣诞→2026-12-25
+- [x] 更新 `openspec/specs/`（归档后主列表口径变化）—— 已在 archive/spec.md 中写明主列表只查 archivedAt IS NULL
+- [x] 回填新坑到 `my-app-workflow/踩坑清单.md`
 - [ ] 等使用者确认后归档本 change
 
 ## 实施中发现的新坑
