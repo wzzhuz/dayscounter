@@ -38,6 +38,30 @@ jobs:
         with:
           gradle-version: '9.6.0'
 
+      # 单测必须跑：天数口径错了不会崩溃、不会报错，
+      # 只能靠测试兜住。放在编译之后、出包之前。
+      - name: 跑单元测试
+        run: gradle testDebugUnitTest --no-daemon --stacktrace
+
+      - name: 回传测试报告
+        if: failure()
+        continue-on-error: true
+        run: |
+          set +e
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          mkdir -p ci-logs
+          find app/build/reports -name '*.html' 2>/dev/null | head -20 > ci-logs/test-reports.txt
+          find app/build/test-results -name '*.xml' 2>/dev/null | head -20 >> ci-logs/test-reports.txt
+          for f in $(find app/build/test-results -name '*.xml' | head -5); do
+            echo "--- $f ---" >> ci-logs/test-reports.txt
+            grep -o 'testcase name="[^"]*"' "$f" >> ci-logs/test-reports.txt || true
+            grep -o '<failure[^>]*>' "$f" >> ci-logs/test-reports.txt || true
+          done
+          git add -f ci-logs
+          git commit -q -m "ci: 测试报告 run-${{ github.run_number }}"
+          git push -q origin "HEAD:${{ github.ref_name }}" || true
+
       - name: 编译 Debug APK
         id: build_debug
         run: gradle assembleDebug --stacktrace --no-daemon
