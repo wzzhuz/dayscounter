@@ -171,3 +171,49 @@ fun TagChips(
         }
     }
 }
+
+/**
+ * 单事件自定义颜色选择。
+ *
+ * **用索引而非 ARGB/名称传值**：索引直接落到已有的 `colorArgb` 列，
+ * 免去再一次 schema 迁移。代价是 `options` 顺序必须固定（只能追加），
+ * 已在 ColorPalette.PICKABLE 处注明。
+ *
+ * 只提供调色板里预设的几组，**不开放任意取色器**：
+ * 用户可能选出高饱和背景，把天数数字糊掉。
+ * 第一个选项是「跟随分类」，选中即清除自定义色。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ColorPicker(
+    options: List<com.wzzhuz.dayscounter.ui.theme.GradientPair>,
+    selectedIndex: Int?,
+    onSelect: (Int?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // 「跟随分类」选项：选中即清除自定义色
+        FilterChip(
+            selected = selectedIndex == null,
+            onClick = { onSelect(null) },
+            label = { Text("跟随分类") },
+        )
+        options.forEachIndexed { index, pair ->
+            FilterChip(
+                selected = selectedIndex == index,
+                onClick = { onSelect(index) },
+                label = { Text(pair.name) },
+                leadingIcon = {
+                    Surface(
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        color = pair.accent,
+                        modifier = Modifier.size(16.dp),
+                    ) {}
+                },
+            )
+        }
+    }
+}
