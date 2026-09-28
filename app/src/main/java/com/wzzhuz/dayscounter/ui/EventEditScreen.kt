@@ -136,6 +136,7 @@ fun EventEditScreen(
                                         note = note.trim(),
                                         categoryId = categoryId,
                                         tagIds = selectedTagIds.toList(),
+                                        colorArgb = colorIndex,
                                     )
                                 )
                             }
