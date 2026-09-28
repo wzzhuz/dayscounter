@@ -9,3 +9,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# CI 失败时回传的编译日志。workflow 里用 git add -f 强制提交，
+# 归档 change 前需清理本目录（检查清单：无残留）
+ci-logs/
