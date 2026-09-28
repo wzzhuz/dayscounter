@@ -22,67 +22,67 @@
 
 ## 阶段三：工程骨架
 
-- [ ] 建 Android 工程（Kotlin + Compose + Material3 + Room + kotlinx.serialization）
-- [ ] 引入 Room 依赖（runtime / ktx + **KSP**，注意 KSP 版本不与 Kotlin 绑定，踩坑清单 §1.2）
-- [ ] **固定 debug.keystore 并引用**（防第二次编译装不上，踩坑清单 §2.4）
-- [ ] 配阿里云 Maven 镜像（否则编译极慢，环境能力边界 §5.1）
-- [ ] `AndroidManifest.xml`：确认**不声明** INTERNET 权限
+- [x] 建 Android 工程（Kotlin + Compose + Material3 + Room + kotlinx.serialization）
+- [x] 引入 Room 依赖（runtime / ktx + **KSP**，注意 KSP 版本不与 Kotlin 绑定，踩坑清单 §1.2）
+- [x] **固定 debug.keystore 并引用**（防第二次编译装不上，踩坑清单 §2.4）
+- [x] 配阿里云 Maven 镜像（否则编译极慢，环境能力边界 §5.1）
+- [x] `AndroidManifest.xml`：确认**不声明** INTERNET 权限
 - [x] 建 `.github/workflows/build.yml`
-  - [ ] 触发规则用 `branches: ['**']`（**不要用逐个前缀**，会静默不跑，踩坑清单 §2.1）
+  - [x] 触发规则用 `branches: ['**']`（**不要用逐个前缀**，会静默不跑，踩坑清单 §2.1）
 - [x] 推一次空工程，确认 Actions 确实跑起来并出 APK
 
 ## 阶段四：领域层（核心）
 
-- [ ] `Event.kt` —— 领域模型（**只存 LocalDate，不存时刻**；含 `CountMode` 枚举）
-- [ ] `DayCountCalculator.kt`
-  - [ ] `COUNTDOWN` 模式：纯日期差（今天=0 / 明天=1 / 昨天=已过 1）
-  - [ ] `COUNTUP` 模式：**|日期差| + 1**（今天=第 1 天 / 昨天=第 2 天）
-  - [ ] 按年重复：推导不早于今天的最近发生日
-  - [ ] **2 月 29 日 → 平年回退到 2 月 28 日**
-  - [ ] 默认模式：目标 ≥ 今天 → COUNTDOWN；否则 COUNTUP
-- [ ] `LunarCalendar.kt`
-  - [ ] 封装 `android.icu.util.ChineseCalendar`
-  - [ ] 农历 ↔ 公历双向转换
-  - [ ] 农历按年重复：每年重新转换，不做 +365 天近似
+- [x] `Event.kt` —— 领域模型（**只存 LocalDate，不存时刻**；含 `CountMode` 枚举）
+- [x] `DayCountCalculator.kt`
+  - [x] `COUNTDOWN` 模式：纯日期差（今天=0 / 明天=1 / 昨天=已过 1）
+  - [x] `COUNTUP` 模式：**|日期差| + 1**（今天=第 1 天 / 昨天=第 2 天）
+  - [x] 按年重复：推导不早于今天的最近发生日
+  - [x] **2 月 29 日 → 平年回退到 2 月 28 日**
+  - [x] 默认模式：目标 ≥ 今天 → COUNTDOWN；否则 COUNTUP
+- [x] `LunarCalendar.kt`
+  - [x] 封装 `android.icu.util.ChineseCalendar`
+  - [x] 农历 ↔ 公历双向转换
+  - [x] 农历按年重复：每年重新转换，不做 +365 天近似
 
 ## 阶段五：数据层（Room）
 
-- [ ] `db/AppDatabase.kt`
-  - [ ] Room Database，注册 entities（Event / Tag / CrossRef / Fts）
-  - [ ] ⚠️ **`onCreate` 里手动建 FTS 三条触发器**（Room 不自动生成，否则搜索永远为空且不报错）
-- [ ] `db/EventEntity.kt`
-  - [ ] `originEpochDay`（**存"第一次"，不存"今年那次"**）
-  - [ ] `calendarType` + 农历字段（lunarMonth / lunarDay / lunarLeapMonth）
-  - [ ] `countMode`、`repeatType`、`pinned`、`categoryId`、`note`
-  - [ ] 预留 `reminderDaysBefore`（供 add-event-reminder change）
-  - [ ] **不存** daysUntil / nextOccurrence
-- [ ] `db/TagEntity.kt` + `db/EventTagCrossRef.kt`
-  - [ ] 多对多关系表
-  - [ ] **外键 `onDelete = CASCADE`**（防孤儿行）
-  - [ ] `indices = [Index("tagId")]`
-- [ ] `db/EventFts.kt` —— `@Fts4(contentEntity = EventEntity::class)`
-- [ ] `db/EventDao.kt`
-  - [ ] 查询返回 `Flow`（自动后台执行 + 变更通知）
-  - [ ] `@Transaction` 的 `getEventsWithTags()`
-  - [ ] FTS 搜索（标题 + 备注）
+- [x] `db/AppDatabase.kt`
+  - [x] Room Database，注册 entities（Event / Tag / CrossRef / Fts）
+  - [x] ⚠️ **`onCreate` 里手动建 FTS 三条触发器**（Room 不自动生成，否则搜索永远为空且不报错）
+- [x] `db/EventEntity.kt`
+  - [x] `originEpochDay`（**存"第一次"，不存"今年那次"**）
+  - [x] `calendarType` + 农历字段（lunarMonth / lunarDay / lunarLeapMonth）
+  - [x] `countMode`、`repeatType`、`pinned`、`categoryId`、`note`
+  - [x] 预留 `reminderDaysBefore`（供 add-event-reminder change）
+  - [x] **不存** daysUntil / nextOccurrence
+- [x] `db/TagEntity.kt` + `db/EventTagCrossRef.kt`
+  - [x] 多对多关系表
+  - [x] **外键 `onDelete = CASCADE`**（防孤儿行）
+  - [x] `indices = [Index("tagId")]`
+- [x] `db/EventFts.kt` —— `@Fts4(contentEntity = EventEntity::class)`
+- [x] `db/EventDao.kt`
+  - [x] 查询返回 `Flow`（自动后台执行 + 变更通知）
+  - [x] `@Transaction` 的 `getEventsWithTags()`
+  - [x] FTS 搜索（标题 + 备注）
   - [x] 按标签筛选
-- [ ] `EventRepository.kt`
-  - [ ] Entity ↔ 领域模型映射
-  - [ ] 排序结果缓存（置顶优先 + |天数| 升序）
-  - [ ] **禁止**在 `items{}` 内做 `indexOfFirst` / `find` / `filter` / `sortedBy`
-- [ ] `BackupManager.kt`
-  - [ ] 导出 JSON（含标签关联关系）
-  - [ ] 导入 JSON：**单事务，失败全回滚，不清空已有数据**
+- [x] `EventRepository.kt`
+  - [x] Entity ↔ 领域模型映射
+  - [x] 排序结果缓存（置顶优先 + |天数| 升序）
+  - [x] **禁止**在 `items{}` 内做 `indexOfFirst` / `find` / `filter` / `sortedBy`
+- [x] `BackupManager.kt`
+  - [x] 导出 JSON（含标签关联关系）
+  - [x] 导入 JSON：**单事务，失败全回滚，不清空已有数据**
 
 ## 阶段六：UI 层
 
-- [ ] `EventListScreen.kt`
+- [x] `EventListScreen.kt`
   - [x] 列表：天数 / 标题 / 分类 / 标签
   - [x] 置顶事件视觉区分
   - [x] 「就是今天」（倒数）与「第 N 天」（正数）分别标记
   - [x] 搜索入口 + 结果空状态提示
   - [x] 按标签筛选
-- [ ] `EventEditScreen.kt`
+- [x] `EventEditScreen.kt`
   - [x] 标题 + 日期为必填，其余有默认值
   - [x] 公历 / 农历切换
   - [x] **倒数 / 正数模式切换**（默认按日期给值）
@@ -91,8 +91,8 @@
   - [x] 按年重复开关
   - [x] 置顶开关
   - [x] 删除前确认弹窗
-- [ ] `TagManageScreen.kt` —— 标签增删改
-- [ ] 导出 / 导入入口（设置页）
+- [x] `TagManageScreen.kt` —— 标签增删改（并入设置页，未单独建页）
+- [x] 导出 / 导入入口（设置页）
 
 ## 阶段七：验证
 
@@ -107,7 +107,7 @@
 - [ ] 手动验证：加满 25 条事件，确认无数量限制提示
 - [ ] 手动验证：导出 → 清数据 → 导入，字段与标签完整还原
 - [x] 检查产物 Manifest 无 INTERNET 权限
-- [ ] **手动跑一次 release 构建**（debug 不跑 lintVital，问题会潜伏，踩坑清单 §2.3）
+- [x] **手动跑一次 release 构建**（debug 不跑 lintVital，问题会潜伏，踩坑清单 §2.3）
 
 ## 阶段八：收尾
 
