@@ -85,6 +85,8 @@ fun EventEditScreen(
     onCancel: () -> Unit,
     onCreateCategory: (String) -> Unit,
     onCreateTag: (String) -> Unit,
+    /** 归档入口。仅编辑已有事件时提供（新增时无意义） */
+    onArchive: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
 ) {
     var title by remember { mutableStateOf(initial?.title ?: "") }
@@ -259,6 +261,12 @@ fun EventEditScreen(
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 3,
             )
+
+            onArchive?.let {
+                TextButton(onClick = it) {
+                    Text("归档（从主列表隐藏，可恢复）")
+                }
+            }
 
             if (onDelete != null) {
                 var confirmDelete by remember { mutableStateOf(false) }
