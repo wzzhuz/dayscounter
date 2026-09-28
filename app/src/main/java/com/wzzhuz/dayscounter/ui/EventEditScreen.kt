@@ -101,6 +101,10 @@ fun EventEditScreen(
     var showDatePicker by remember { mutableStateOf(false) }
 
     var categoryId by remember { mutableStateOf(initial?.categoryId) }
+    // 自定义色存「调色板索引」而非 ARGB 数值：
+    // 复用已有的 colorArgb 列，不需要再升一次 schema。
+    // 索引依赖 PICKABLE 顺序固定，故该列表**只能追加不能重排**。
+    var colorIndex by remember { mutableStateOf(initial?.colorArgb) }
     var selectedTagIds by remember {
         mutableStateOf(initial?.tagIds?.toSet() ?: emptySet())
     }
@@ -226,6 +230,14 @@ fun EventEditScreen(
                 onCreate = onCreateCategory,
             )
 
+            // ---- 卡片颜色（可选，默认跟随分类） ----
+            SectionLabel("卡片颜色")
+            ColorPicker(
+                options = com.wzzhuz.dayscounter.ui.theme.ColorPalette.PICKABLE,
+                selectedIndex = colorIndex,
+                onSelect = { colorIndex = it },
+            )
+
             // ---- 标签（多值） ----
             SectionLabel("标签")
             if (tags.isEmpty()) {
@@ -349,6 +361,7 @@ data class EventFormResult(
     val note: String,
     val categoryId: String?,
     val tagIds: List<String>,
+    val colorArgb: Int?,
 )
 
 /** 编辑页的初始数据（从已有事件映射而来） */
@@ -363,5 +376,6 @@ data class EventDraft(
     val note: String,
     val categoryId: String? = null,
     val tagIds: List<String> = emptyList(),
+    val colorArgb: Int? = null,
     val createdAt: Long = 0L,
 )
