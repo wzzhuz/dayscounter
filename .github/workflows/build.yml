@@ -72,6 +72,11 @@ jobs:
       # 选它而不是 artifact 的原因：artifact 上传在本仓库持续失败且报错信息不可见，
       # 而 git push 已在「回传日志」步骤验证可用；APK 落库后随时可下载，也便于留存版本。
       # ⚠️ commit message 必须带 [skip ci]，否则 push 到 main 会再次触发本 workflow，无限循环。
+      # ⚠️ 两个必须处理的失败模式：
+      # 1. APK 内容与上次完全一致 → git commit 无变化 → 退出码非 0 → set -e 中断整步。
+      #    必须允许「无变化」通过，否则明明构建成功了却判失败。
+      # 2. 上一次 ci-bot 的 push 还没落到本地 HEAD → push 被拒（non-fast-forward）。
+      #    push 前先 pull --rebase，避免并发 run 互相顶掉。
       - name: 提交 APK 到仓库
         if: success()
         run: |
@@ -82,9 +87,14 @@ jobs:
           git config user.name "ci-bot"
           git config user.email "ci-bot@users.noreply.github.com"
           git add -f apk
-          git commit -q -m "ci: 发布 debug APK run-${{ github.run_number }} [skip ci]"
-          git push -q origin "HEAD:${{ github.ref_name }}"
-          echo "APK 已提交到 apk/dayscounter-debug.apk"
+          if git diff --cached --quiet; then
+            echo "APK 与仓库中现有版本一致，跳过提交"
+          else
+            git commit -q -m "ci: 发布 debug APK run-${{ github.run_number }} [skip ci]"
+            git pull --rebase -q origin "${{ github.ref_name }}" || true
+            git push -q origin "HEAD:${{ github.ref_name }}"
+            echo "APK 已提交到 apk/dayscounter-debug.apk"
+          fi
 
       # Release 构建会跑 lintVital，debug 不跑。
       # Lint 问题会潜伏到出正式包时才炸，所以早期就跑一次（踩坑清单 2.3）
@@ -113,9 +123,14 @@ jobs:
           git config user.name "ci-bot"
           git config user.email "ci-bot@users.noreply.github.com"
           git add -f apk
-          git commit -q -m "ci: 发布 release APK run-${{ github.run_number }} [skip ci]"
-          git push -q origin "HEAD:${{ github.ref_name }}"
-          echo "Release APK 已提交"
+          if git diff --cached --quiet; then
+            echo "Release APK 与仓库中现有版本一致，跳过提交"
+          else
+            git commit -q -m "ci: 发布 release APK run-${{ github.run_number }} [skip ci]"
+            git pull --rebase -q origin "${{ github.ref_name }}" || true
+            git push -q origin "HEAD:${{ github.ref_name }}"
+            echo "Release APK 已提交"
+          fi
 
       # 沙盒访问 CI 日志可能被网络策略拦截（403）。
       # 失败时把日志 commit 回仓库，再从 Contents API 读取（踩坑清单 2.5）
