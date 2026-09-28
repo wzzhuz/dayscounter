@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -24,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.wzzhuz.dayscounter.data.BackupManager
 import com.wzzhuz.dayscounter.data.EventRepository
 import com.wzzhuz.dayscounter.domain.CalendarType
 import com.wzzhuz.dayscounter.domain.CountMode
@@ -37,6 +39,7 @@ import com.wzzhuz.dayscounter.ui.EventDraft
 import com.wzzhuz.dayscounter.ui.EventEditScreen
 import com.wzzhuz.dayscounter.ui.EventLibraryScreen
 import com.wzzhuz.dayscounter.ui.EventListScreen
+import com.wzzhuz.dayscounter.ui.SettingsScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,19 +50,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val repository = (application as DaysCounterApp).repository
+        val app = application as DaysCounterApp
 
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AppContent(repository)
+                    AppContent(app.repository, app.backupManager)
                 }
             }
         }
     }
 }
 
-private enum class Screen { LIST, LIBRARY, CALCULATOR, ARCHIVE }
+private enum class Screen { LIST, LIBRARY, CALCULATOR, ARCHIVE, SETTINGS }
 
 /**
  * 页面路由。
@@ -71,7 +74,7 @@ private enum class Screen { LIST, LIBRARY, CALCULATOR, ARCHIVE }
  *    且误触会让人以为事件「没了」。
  */
 @androidx.compose.runtime.Composable
-private fun AppContent(repository: EventRepository) {
+private fun AppContent(repository: EventRepository, backupManager: BackupManager) {
     var screen by remember { mutableStateOf(Screen.LIST) }
     var editingId by remember { mutableStateOf<String?>(null) }
     var isAdding by remember { mutableStateOf(false) }
@@ -200,6 +203,14 @@ private fun AppContent(repository: EventRepository) {
                 onBack = { screen = Screen.LIST },
             )
         }
+
+        Screen.SETTINGS -> {
+            SettingsScreen(
+                repository = repository,
+                backupManager = backupManager,
+                onBack = { screen = Screen.LIST },
+            )
+        }
     }
 }
 
@@ -255,6 +266,12 @@ private fun BottomTabs(current: Screen, onSelect: (Screen) -> Unit) {
             onClick = { onSelect(Screen.CALCULATOR) },
             icon = { Icon(Icons.Default.DateRange, contentDescription = "计算器") },
             label = { Text("计算器") },
+        )
+        NavigationBarItem(
+            selected = current == Screen.SETTINGS,
+            onClick = { onSelect(Screen.SETTINGS) },
+            icon = { Icon(Icons.Default.Settings, contentDescription = "设置") },
+            label = { Text("设置") },
         )
     }
 }
