@@ -27,7 +27,7 @@ class BackupManager(private val db: AppDatabase) {
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = false }
 
     suspend fun export(): String {
-        val events = db.eventDao().exportAll()
+        val events = db.eventDao().exportAllWithArchived()
         val tags = db.eventDao().exportTags()
         val refs = db.eventDao().exportRefs()
         val categories = db.eventDao().exportCategories()
@@ -51,6 +51,7 @@ class BackupManager(private val db: AppDatabase) {
                         countMode = e.countMode,
                         repeatType = e.repeatType,
                         categoryId = e.categoryId,
+                        archivedAt = e.archivedAt,
                         pinned = e.pinned,
                         note = e.note,
                         reminderDaysBefore = e.reminderDaysBefore,
@@ -118,6 +119,8 @@ data class EventDto(
     val countMode: String = CountMode.COUNTDOWN.name,
     val repeatType: String = RepeatType.NONE.name,
     val categoryId: String? = null,
+    /** 归档状态必须一起导出：换机后归档事件应仍在归档页，不该回到主列表 */
+    val archivedAt: Long? = null,
     val pinned: Boolean = false,
     val note: String = "",
     val reminderDaysBefore: Int? = null,
@@ -137,6 +140,7 @@ private fun EventDto.toEntity(): EventEntity = EventEntity(
     countMode = countMode,
     repeatType = repeatType,
     categoryId = categoryId,
+    archivedAt = archivedAt,
     pinned = pinned,
     note = note,
     reminderDaysBefore = reminderDaysBefore,
