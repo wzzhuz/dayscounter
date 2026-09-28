@@ -55,8 +55,17 @@ class EventRepository(private val dao: EventDao) {
     fun observeTags(): Flow<List<Tag>> =
         dao.observeTags().map { list -> list.map { Tag(it.id, it.name, it.colorArgb) } }
 
+    /** 归档列表：与主列表互斥，按归档时间倒序 */
+    fun observeArchived(today: LocalDate = LocalDate.now()): Flow<List<EventRow>> =
+        dao.observeArchived().map { list ->
+            list.map { it.toRow(today) }
+                .sortedByDescending { it.event.archivedAt ?: 0L }
+        }
+
     fun observeCategories(): Flow<List<Category>> =
-        dao.observeCategories().map { list -> list.map { Category(it.id, it.name, it.builtIn) } }
+        dao.observeCategories().map { list ->
+            list.map { Category(it.id, it.name, it.builtIn, it.colorStartArgb, it.colorEndArgb) }
+        }
 
     /**
      * 按名字取分类，不存在则创建。
@@ -133,6 +142,21 @@ class EventRepository(private val dao: EventDao) {
 
     suspend fun deleteTag(id: String) = dao.deleteTag(id)
 
+    /** 归档：软删除，数据保留可恢复 */
+    fun archiveAsync(id: String) {
+        CoroutineScope(Dispatchers.IO).launch { dao.archive(id, System.currentTimeMillis()) }
+    }
+
+    /** 恢复：回到主列表 */
+    fun unarchiveAsync(id: String) {
+        CoroutineScope(Dispatchers.IO).launch { dao.unarchive(id) }
+    }
+
+    /** 彻底删除。**调用方必须先做二次确认**——此操作不可恢复 */
+    fun deleteForeverAsync(id: String) {
+        CoroutineScope(Dispatchers.IO).launch { dao.deleteForever(id) }
+    }
+
     /** 同步创建标签（供 UI 回调直接调用）。创建后 tags Flow 自动刷新 */
     fun createTagAsync(name: String) {
         CoroutineScope(Dispatchers.IO).launch { createTag(name.trim()) }
@@ -157,6 +181,9 @@ data class Category(
     val id: String,
     val name: String,
     val builtIn: Boolean = false,
+    /** 渐变起始色；null = 由名称从调色板分配 */
+    val colorStartArgb: Int? = null,
+    val colorEndArgb: Int? = null,
 )
 
 /** 列表的一行：领域模型 + 已算好的天数 + 已推导的下一次发生日 */
@@ -192,6 +219,8 @@ private fun EventEntity.toDomain(tags: List<TagEntity> = emptyList()): Event = E
     pinned = pinned,
     note = note,
     reminderDaysBefore = reminderDaysBefore,
+    archivedAt = archivedAt,
+    colorArgb = colorArgb,
     tags = tags.map { Tag(it.id, it.name, it.colorArgb) },
     createdAt = createdAt,
     updatedAt = updatedAt,
@@ -211,6 +240,8 @@ private fun Event.toEntity(): EventEntity = EventEntity(
     pinned = pinned,
     note = note,
     reminderDaysBefore = reminderDaysBefore,
+    archivedAt = archivedAt,
+    colorArgb = colorArgb,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
