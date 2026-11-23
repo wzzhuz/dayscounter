@@ -1,0 +1,43 @@
+name: 清理 Actions 制品（统一口径）
+
+# 第 54 批：账号内所有自有仓库共用这一份清理机制。
+# Actions 存储配额是**账号级共享**（与 Packages 共用），一个仓库堆爆会连累
+# 同账号下所有仓库的 upload-artifact。故每个仓库都必须在本地收敛自己的制品。
+#
+# 统一口径（使用者 2026-11-23 拍板）：
+#   debug 类    只保留最近 1 个
+#   release 类  只保留最近 3 个
+#   其余类      只保留最近 3 个
+#
+# push 触发让每次 CI 前后都自动收敛；schedule 兜住长期不推送的仓库；
+# workflow_dispatch 供随时手动跑一次。清理只删历史制品，幂等且不影响
+# 并发 run 正在上传的产物（新建的永远是最新的，分类计数时必被保留）。
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 3 * * *'
+  push:
+    branches: ['**']
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: artifact-cleanup-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cleanup:
+    name: 按类别收敛制品
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 清理（debug 1 / release 3 / 其它 3）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/cleanup-artifacts.sh
